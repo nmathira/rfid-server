@@ -69,7 +69,7 @@ async def handle_tapIn(client: aiomqtt.Client, payload, db: AsyncSession) -> Non
 
                 server_data = RfidServerTapPayload(
                     pico_id=payload_parsed.pico_id,
-                    tag_id=payload.parsed.tag_id,
+                    tag_id=payload_parsed.tag_id,
                     user_pref_name=user.name,
                     points=user.total_taps,
                     streak_score=user.current_streak,
@@ -82,7 +82,7 @@ async def handle_tapIn(client: aiomqtt.Client, payload, db: AsyncSession) -> Non
             # disgard same day tap
             server_data = RfidServerTapPayload(
                 pico_id=payload_parsed.pico_id,
-                tag_id=payload.parsed.tag_id,
+                tag_id=payload_parsed.tag_id,
                 user_pref_name=user.name,
                 points=user.total_taps,
                 streak_score=user.current_streak,
@@ -130,7 +130,7 @@ async def handle_tapIn(client: aiomqtt.Client, payload, db: AsyncSession) -> Non
             await db.commit()
             server_data = RfidServerTapPayload(
                 pico_id=payload_parsed.pico_id,
-                tag_id=payload.parsed.tag_id,
+                tag_id=payload_parsed.tag_id,
                 user_pref_name=user.name,
                 points=user.total_taps,
                 streak_score=user.current_streak,
