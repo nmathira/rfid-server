@@ -6,8 +6,7 @@ from zoneinfo import ZoneInfo
 import aiomqtt
 from db.models import MQTTClient, TapEvent, User
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.utils.utils import (
+from utils.utils import (
     RfidServerTapPayload,
     parse_tap_response,
 )
