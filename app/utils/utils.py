@@ -7,14 +7,13 @@ class RfidClientTapPayload:
     tag_id: str
 
 
-def parse_tap_response(payload: str) -> RfidClientTapPayload | None:
-    fields = [f.strip() for f in payload.split("|")]
-    if len(fields) != 2:
-        print(f"[parse] Expected 2 fields, got {len(fields)}")
+def parse_tap_response(payload: list[str]) -> RfidClientTapPayload | None:
+    if len(payload) != 2:
+        print(f"[parse] Expected 2 fields, got {len(payload)}")
         return None
     return RfidClientTapPayload(
-        pico_id=fields[0],
-        tag_id=fields[1],
+        pico_id=payload[0],
+        tag_id=payload[1],
     )
 
 
