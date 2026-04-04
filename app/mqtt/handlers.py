@@ -40,6 +40,7 @@ async def handle_tapIn(client: aiomqtt.Client, payload: str, db: AsyncSession) -
 
     if not user:
         # First time we've seen this RFID uid — create them with a random name
+<<<<<<< HEAD
         # user = User(
         #     uid=user_id[1],
         #     name=_random_name(),
@@ -53,6 +54,21 @@ async def handle_tapIn(client: aiomqtt.Client, payload: str, db: AsyncSession) -
         # db.add(user)
         # db.add(TapEvent(user_uid=user_id[1], mqtt_client_id=user_id[0], tapped_at=now))
         # await db.commit()
+=======
+        user = User(
+            uid=user_id[1],
+            name=_random_name(),
+            inside=True,
+            total_taps=1,
+            streak_start=today,
+            last_tap_at=now,
+            last_tap_day=today,
+            past_streaks=[],
+        )
+        db.add(user)
+        db.add(TapEvent(user_uid=user_id, mqtt_client_id=user_id[0], tapped_at=now))
+        await db.commit()
+>>>>>>> parent of 3fdf6fd (fixed handler)
 
         await client.publish(
             "event/tapResponse",
@@ -95,7 +111,7 @@ async def handle_tapIn(client: aiomqtt.Client, payload: str, db: AsyncSession) -
     user.last_tap_day = today
     user.inside = True
 
-    db.add(TapEvent(user_uid=user_id[1], mqtt_client_id=user_id[0], tapped_at=now))
+    db.add(TapEvent(user_uid=user_id, mqtt_client_id=user_id[0], tapped_at=now))
     await db.commit()
 
     await client.publish("event/tapResponse", payload + "|" + user.name)
