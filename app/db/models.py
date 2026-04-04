@@ -31,6 +31,7 @@ class User(Base):
     tap_events: Mapped[List["TapEvent"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    year: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
 
 class TapEvent(Base):
@@ -49,12 +50,13 @@ class TapEvent(Base):
     mqtt_client: Mapped[Optional["MQTTClient"]] = relationship(
         back_populates="tap_events"
     )
+    direction: Mapped[bool] = mapped_column(Boolean)
 
 
 class MQTTClient(Base):
     __tablename__ = "mqtt_clients"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
-    direction: Mapped[str] = mapped_column(String(3))  # "in" or "out"
+    direction: Mapped[bool] = mapped_column(Boolean)  # "in" or "out"
 
     tap_events: Mapped[List["TapEvent"]] = relationship(back_populates="mqtt_client")
