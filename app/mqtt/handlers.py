@@ -23,7 +23,7 @@ def _random_name() -> str:
     return "-".join(random.choices(string.ascii_uppercase, k=4))
 
 
-def _get_today() -> Datetime:
+def _get_today() -> datetime:
     """Today's date with a 3am rollover cutoff."""
     now = datetime.now(EASTERN)
     return (now - timedelta(hours=3)).date()
