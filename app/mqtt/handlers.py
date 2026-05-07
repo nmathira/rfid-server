@@ -1,6 +1,6 @@
 import random
 import string
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import aiomqtt
@@ -23,7 +23,7 @@ def _random_name() -> str:
     return "-".join(random.choices(string.ascii_uppercase, k=4))
 
 
-def _get_today() -> datetime:
+def _get_today() -> date:
     """Today's date with a 3am rollover cutoff."""
     now = datetime.now(EASTERN)
     return (now - timedelta(hours=3)).date()
@@ -72,7 +72,7 @@ async def _start_new_streak(db: AsyncSession, user: User, now: datetime) -> Stre
     return streak
 
 
-async def _end_streak(streak: Streak) -> None:
+def _end_streak(streak: Streak) -> None:
     streak.is_active = False
 
 
@@ -84,20 +84,19 @@ async def _process_streak(db: AsyncSession, user: User, now: datetime) -> Streak
     if streak is None:
         return await _start_new_streak(db, user, now)
 
-    # Same day — no change
     if streak.last_tap_day == today:
         return streak
 
-    # Consecutive day — extend
-    if (today - streak.last_tap_day).days == 1:
-        streak.streak_days += 1
-        streak.streak_points += _get_multiplier(streak.streak_days)
-        streak.last_tap_at = now
-        streak.last_tap_day = today
-        return streak
+    if streak.last_tap_day is not None:
+        if (today - streak.last_tap_day).days == 1:
+            streak.streak_days += 1
+            streak.streak_points += _get_multiplier(streak.streak_days)
+            streak.last_tap_at = now
+            streak.last_tap_day = today
+            return streak
 
     # Streak broken — archive and start fresh
-    await _end_streak(streak)
+    _end_streak(streak)
     return await _start_new_streak(db, user, now)
 
 
@@ -113,7 +112,7 @@ def _build_response(
     return RfidServerTapPayload(
         pico_id=pico_id,
         tag_id=user.uid,
-        user_pref_name=user.name,
+        user_pref_name=user.name or _random_name(),
         points=user.total_taps,
         streak_score=streak.streak_days if streak else 0,
         special_message=message,
@@ -161,9 +160,7 @@ async def handle_tap(client: aiomqtt.Client, payload: str, db: AsyncSession) -> 
             await db.commit()
         return
 
-    # ─── Tap IN ──────────────────────────────────────────────────────────
-
-    # New user — register and start their first streak
+    # ─── Tap IN: New User ────────────────────────────────────────────────
     if not user:
         user = User(
             uid=parsed.tag_id,
@@ -174,7 +171,6 @@ async def handle_tap(client: aiomqtt.Client, payload: str, db: AsyncSession) -> 
         )
         db.add(user)
         streak = await _start_new_streak(db, user, now)
-
         db.add(
             TapEvent(
                 user_uid=user.uid,
@@ -194,22 +190,18 @@ async def handle_tap(client: aiomqtt.Client, payload: str, db: AsyncSession) -> 
         await client.publish("event/tapResponse", str(response))
         return
 
-    # Existing user — process streak
-    streak = await _process_streak(db, user, now)
-    today = _get_today()
+    # ─── Tap IN: Existing User ───────────────────────────────────────────
 
-    # Same day duplicate — just acknowledge
-    if user.last_tap_day == today:
-        # last_tap_day already matches, streak wasn't modified (same-day path)
-        # But _process_streak already handled the same-day case, so we check
-        # if taps were already counted today
-        pass
-    else:
-        # New day tap — increment counters
+    # Check BEFORE _process_streak modifies the streak
+    streak = await _get_active_streak(db, user.uid)
+    already_tapped_today = streak is not None and streak.last_tap_day == _get_today()
+
+    streak = await _process_streak(db, user, now)
+
+    if not already_tapped_today:
         user.total_taps += 1
         user.semester_taps += 1
 
-    # Always update state
     user.inside = True
 
     db.add(

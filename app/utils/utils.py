@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass
@@ -27,4 +28,4 @@ class RfidServerTapPayload:
     special_message: str
 
     def __str__(self) -> str:
-        return f"{self.pico_id}|{self.tag_id}|{self.user_pref_name}|{self.points}|{self.streak_score}|{self.special_message}"
+        return f"{self.pico_id}|{self.tag_id}|[{datetime.now().strftime('%A %b %d, %Y | %I:%M:%')}]|{self.user_pref_name}|{self.points}|{self.streak_score}|{self.special_message}"
