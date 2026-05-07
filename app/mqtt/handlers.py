@@ -11,6 +11,12 @@ from utils.utils import (
     parse_tap_response,
 )
 
+STREAK_MULTIPLIERS = {
+    2: 2,
+    5: 3,
+    8: 4,
+}
+
 EASTERN = ZoneInfo("America/New_York")
 
 
