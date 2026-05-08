@@ -28,12 +28,11 @@ class RfidServerTapPayload:
     streak_score: int
     special_message: str
 
-
-def __str__(self) -> str:
-    # now = datetime.now(ZoneInfo("America/New_York"))
-    return f"{self.pico_id}|{self.tag_id}|{self.user_pref_name}|{self.points}|{self.streak_score}|{self.special_message}"
-    # return (
-    #     f"{self.pico_id}|{self.tag_id}|"
-    #     f"[{now.strftime('%A %b %d, %Y | %I:%M %p %Z')}]|"
-    #     f"{self.user_pref_name}|{self.points}|{self.streak_score}|{self.special_message}"
-    # )
+    def __str__(self) -> str:
+        # now = datetime.now(ZoneInfo("America/New_York"))
+        return f"{self.pico_id}|{self.tag_id}|{self.user_pref_name}|{self.points}|{self.streak_score}|{self.special_message}"
+        # return (
+        #     f"{self.pico_id}|{self.tag_id}|"
+        #     f"[{now.strftime('%A %b %d, %Y | %I:%M %p %Z')}]|"
+        #     f"{self.user_pref_name}|{self.points}|{self.streak_score}|{self.special_message}"
+        # )
