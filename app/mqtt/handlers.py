@@ -11,7 +11,6 @@ from utils.utils import RfidServerTapPayload, parse_tap_response
 
 EASTERN = ZoneInfo("America/New_York")
 
-# At streak day N+, each tap earns this many points
 STREAK_MULTIPLIERS = [
     (8, 4),
     (5, 3),
@@ -39,8 +38,7 @@ def _get_multiplier(streak_days: int) -> int:
 
 def _get_current_semester() -> int:
     """Return the current semester as an offset from the initial semester."""
-    # Adjust this to your actual start date and cadence
-    INITIAL_SEMESTER_START = datetime(2026, 1, 13).date()
+    INITIAL_SEMESTER_START = date(2026, 1, 13)
     SEMESTER_LENGTH_DAYS = 120
     days_elapsed = (_get_today() - INITIAL_SEMESTER_START).days
     return max(0, days_elapsed // SEMESTER_LENGTH_DAYS)
@@ -98,25 +96,6 @@ async def _process_streak(db: AsyncSession, user: User, now: datetime) -> Streak
     # Streak broken — archive and start fresh
     _end_streak(streak)
     return await _start_new_streak(db, user, now)
-
-
-# ─── Tap Response Builder ────────────────────────────────────────────────────
-
-
-def _build_response(
-    pico_id: str,
-    user: User,
-    streak: Streak | None,
-    message: str = "0",
-) -> RfidServerTapPayload:
-    return RfidServerTapPayload(
-        pico_id=pico_id,
-        tag_id=user.uid,
-        user_pref_name=user.name or _random_name(),
-        points=user.total_taps,
-        streak_score=streak.streak_days if streak else 0,
-        special_message=message,
-    )
 
 
 # ─── Handlers ────────────────────────────────────────────────────────────────
@@ -181,18 +160,22 @@ async def handle_tap(client: aiomqtt.Client, payload: str, db: AsyncSession) -> 
         )
         await db.commit()
 
-        response = _build_response(
-            parsed.pico_id,
-            user,
-            streak,
-            message="Register your keyfob with Niranjan when he is available.",
+        await client.publish(
+            "event/tapResponse",
+            str(
+                RfidServerTapPayload(
+                    pico_id=parsed.pico_id,
+                    tag_id=user.uid,
+                    user_pref_name=user.name or _random_name(),
+                    points=user.total_taps,
+                    streak_score=streak.streak_days,
+                    special_message="Register your keyfob with Niranjan when he is available.",
+                )
+            ),
         )
-        await client.publish("event/tapResponse", str(response))
         return
 
     # ─── Tap IN: Existing User ───────────────────────────────────────────
-
-    # Check BEFORE _process_streak modifies the streak
     streak = await _get_active_streak(db, user.uid)
     already_tapped_today = streak is not None and streak.last_tap_day == _get_today()
 
@@ -214,8 +197,19 @@ async def handle_tap(client: aiomqtt.Client, payload: str, db: AsyncSession) -> 
     )
     await db.commit()
 
-    response = _build_response(parsed.pico_id, user, streak)
-    await client.publish("event/tapResponse", str(response))
+    await client.publish(
+        "event/tapResponse",
+        str(
+            RfidServerTapPayload(
+                pico_id=parsed.pico_id,
+                tag_id=user.uid,
+                user_pref_name=user.name or _random_name(),
+                points=user.total_taps,
+                streak_score=streak.streak_days if streak else 0,
+                special_message="0",
+            )
+        ),
+    )
 
 
 TOPIC_HANDLERS = {

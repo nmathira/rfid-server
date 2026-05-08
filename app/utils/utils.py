@@ -30,7 +30,7 @@ class RfidServerTapPayload:
 
 
 def __str__(self) -> str:
-    now = datetime.now(ZoneInfo("America/New_York"))
+    # now = datetime.now(ZoneInfo("America/New_York"))
     return f"{self.pico_id}|{self.tag_id}|{self.user_pref_name}|{self.points}|{self.streak_score}|{self.special_message}"
     # return (
     #     f"{self.pico_id}|{self.tag_id}|"
