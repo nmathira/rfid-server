@@ -12,9 +12,8 @@ from utils.utils import RfidServerTapPayload, parse_tap_response
 EASTERN = ZoneInfo("America/New_York")
 
 STREAK_MULTIPLIERS = [
-    (8, 4),
     (5, 3),
-    (2, 2),
+    (3, 2),
 ]
 
 
@@ -167,7 +166,7 @@ async def handle_tap(client: aiomqtt.Client, payload: str, db: AsyncSession) -> 
                     pico_id=parsed.pico_id,
                     tag_id=user.uid,
                     user_pref_name=user.name or _random_name(),
-                    points=user.total_taps,
+                    points=user.semester_taps,
                     streak_score=streak.streak_days,
                     special_message="Register your keyfob with Niranjan when he is available.",
                 )
