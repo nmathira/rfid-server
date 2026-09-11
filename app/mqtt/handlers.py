@@ -203,7 +203,7 @@ async def handle_tap(client: aiomqtt.Client, payload: str, db: AsyncSession) -> 
                 pico_id=parsed.pico_id,
                 tag_id=user.uid,
                 user_pref_name=user.name or _random_name(),
-                points=user.total_taps,
+                points=user.semester_taps,
                 streak_score=streak.streak_days if streak else 0,
                 special_message="0",
             )
