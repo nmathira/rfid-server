@@ -1,4 +1,5 @@
 import asyncio
+from asyncio.taskgroups import TaskGroup
 import os
 import time
 import traceback
@@ -45,17 +46,12 @@ async def main():
                 await client.subscribe("event/#")
                 print("[MQTT] Subscribed, listening...", flush=True)
 
-                await asyncio.gather(
-                    handle_messages(client),
-                    publish_time(client)
-                )
+                async with asyncio.TaskGroup() as tg:
+                    tg.create_task(handle_messages(client))
+                    tg.create_task(publish_time(client))
 
-        except aiomqtt.MqttError as e:
+        except* aiomqtt.MqttError as e:
             print(f"[MQTT] MqttError: {e}", flush=True)
             await asyncio.sleep(3)
-        except Exception as e:
-            print(f"[MQTT] Unexpected error: {traceback.format_exc()}", flush=True)
-            await asyncio.sleep(3)
-
 
 asyncio.run(main())
