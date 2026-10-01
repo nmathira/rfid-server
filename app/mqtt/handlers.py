@@ -159,6 +159,8 @@ async def handle_tap(client: aiomqtt.Client, payload: str, db: AsyncSession) -> 
         )
         await db.commit()
 
+        placement = await get_leaderboard_placement(db,user.uid)
+
         await client.publish(
             "event/tapResponse",
             str(
@@ -168,6 +170,7 @@ async def handle_tap(client: aiomqtt.Client, payload: str, db: AsyncSession) -> 
                     user_pref_name=user.name or _random_name(),
                     points=user.semester_taps,
                     streak_score=streak.streak_days,
+                    leaderboard_placement=placement,
                     special_message="Register your keyfob with Niranjan when he is available.",
                 )
             ),
