@@ -47,7 +47,7 @@ async def get_leaderboard_placement(
     db: AsyncSession,
     user_uid: str,
 ) -> int:
-    rank = func.dense().over(order_by=User.semester_taps.desc()).label("rank")
+    rank = func.rank().over(order_by=User.semester_taps.desc()).label("rank")
 
     ranked_users = (
         select(
