@@ -6,6 +6,51 @@ pics expect
 
 pico ID | user ID | Name | points | streak score | special message
 
+## Weekly member CSV import
+
+Start the services with `docker compose up -d --build`. For an existing database,
+run the following **once before the first import**, after the worker has created
+the tables:
+
+```sh
+docker compose exec worker python app/migrate_reference_tags.py
+```
+
+The migration adds the `reference_tag` column without changing existing names.
+It is safe to rerun. If you already ran the earlier version, existing migrated
+reference tags will still be used. Back up the database before migrating or importing.
+
+Open http://localhost:8000 on the server and select the weekly CSV. The file
+must be UTF-8, without a header, with four columns in this order: first name,
+last name, email, reference tag. Rows without a tag are reported for review.
+The importer matches tags against `reference_tag` or an uppercase four-letter
+legacy value in `name` or `first_name`. It then stores the CSV first name in
+`name`, full name in `first_name`, email in `campus_id`, and the tag in
+`reference_tag`. No other fields or tables are changed, and users are not created.
+
+The page lists invalid, unmatched, and ambiguous rows with names and tags;
+other unambiguous rows are still processed. Tags shared by conflicting CSV rows
+or multiple database users are skipped. Identical duplicate CSV rows are applied
+once. CSV syntax or encoding errors reject the whole file. Reimporting an
+unchanged file does not rewrite users. The importer only recognizes uppercase
+legacy tags to avoid confusing ordinary four-letter names with tags; resolve
+other legacy spellings manually before importing.
+
+The upload service has no authentication and is bound to localhost. Access it
+on a remote server through an SSH tunnel, for example
+`ssh -L 8000:localhost:8000 user@server`; do not expose it publicly.
+
+mkdir -p backups
+docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "backups/rfid-$(date +%Y%m%d-%H%M%S).dump"
+
+to test:
+
+docker compose exec -T postgres pg_restore --list < backups/rfid-YYYYMMDD-HHMMSS.dump
+
+to restore:
+docker compose stop worker csv-upload
+docker compose exec -T postgres sh -c 'pg_restore --clean --if-exists --exit-on-error -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backups/rfid-YYYYMMDD-HHMMSS.dump
+docker compose start worker csv-upload
 
 database setup:
 
