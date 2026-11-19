@@ -10,8 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "app"))
 from import_members import import_members
 
 
-def user(uid, name=None, first_name=None, reference_tag=None, campus_id=None):
-    return SimpleNamespace(uid=uid, name=name, first_name=first_name,
+def user(uid, name=None, full_name=None, reference_tag=None, campus_id=None):
+    return SimpleNamespace(uid=uid, name=name, full_name=full_name,
                            reference_tag=reference_tag, campus_id=campus_id)
 
 
@@ -39,20 +39,20 @@ class ImportTests(unittest.TestCase):
 
     def test_legacy_locations_and_repeat(self):
         a = user('a', name='ABCD')
-        b = user('b', name='Old', first_name='WXYZ')
+        b = user('b', name='Old', full_name='WXYZ')
         csv = 'Jane,Doe,jane@example.com,ABCD\nJohn,Smith,john@example.com,WXYZ\n'
         result = self.run_import([a, b], csv)
         self.assertEqual(result['updated'], 2)
-        self.assertEqual((a.name, a.first_name, a.reference_tag, a.campus_id),
+        self.assertEqual((a.name, a.full_name, a.reference_tag, a.campus_id),
                          ('Jane', 'Jane Doe', 'ABCD', 'jane@example.com'))
-        self.assertEqual((b.name, b.first_name, b.reference_tag), ('John', 'John Smith', 'WXYZ'))
+        self.assertEqual((b.name, b.full_name, b.reference_tag), ('John', 'John Smith', 'WXYZ'))
         result = self.run_import([a, b], csv)
         self.assertEqual((result['updated'], result['unchanged']), (0, 2))
 
     def test_issues_do_not_block_unambiguous_rows(self):
-        a = user('a', first_name='ABCD')
-        b = user('b', first_name='WXYZ')
-        c = user('c', first_name='WXYZ')
+        a = user('a', full_name='ABCD')
+        b = user('b', full_name='WXYZ')
+        c = user('c', full_name='WXYZ')
         csv = ('Jane,Doe,jane@example.com,ABCD\nMissing,Tag,a@example.com,\n'
                'No,Match,a@example.com,QQQQ\nTwo,Users,a@example.com,WXYZ\n'
                'Bad,Email,,ABCD\nGood,Person,g@example.com,GOOD\n')

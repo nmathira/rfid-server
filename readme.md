@@ -6,6 +6,27 @@ pics expect
 
 pico ID | user ID | Name | points | streak score | special message
 
+## Upgrade an existing database to `full_name`
+
+Back up the database first. For an existing installation that has the old
+`first_name` column, build the new image, stop the application services, and run
+this one-time migration while PostgreSQL stays running:
+
+```sh
+docker compose build worker csv-upload
+docker compose up -d postgres
+docker compose stop worker csv-upload
+docker compose run --rm --no-deps worker python app/migrate_full_name.py
+docker compose up -d worker csv-upload
+```
+
+Only restart the services after the migration succeeds. It renames the column
+in place, preserving both full names and legacy tags. It is safe to rerun if
+`full_name` already exists; it stops without changes if both columns exist or
+neither does. New databases created by the current application already have
+`full_name` and don't need this migration. External SQL queries or applications
+that use `first_name` must also be updated to use `full_name`.
+
 ## Weekly member CSV import
 
 Start the services with `docker compose up -d --build`. For an existing database,
@@ -24,8 +45,8 @@ Open http://localhost:8000 on the server and select the weekly CSV. The file
 must be UTF-8, without a header, with four columns in this order: first name,
 last name, email, reference tag. Rows without a tag are reported for review.
 The importer matches tags against `reference_tag` or an uppercase four-letter
-legacy value in `name` or `first_name`. It then stores the CSV first name in
-`name`, full name in `first_name`, email in `campus_id`, and the tag in
+legacy value in `name` or `full_name` (formerly `first_name`). It then stores the CSV first name in
+`name`, full name in `full_name`, email in `campus_id`, and the tag in
 `reference_tag`. No other fields or tables are changed, and users are not created.
 
 The page lists invalid, unmatched, and ambiguous rows with names and tags;
@@ -57,7 +78,7 @@ database setup:
 User:
 uid: string, primary key
 name: string, optional
-first_name: string, optional
+full_name: string, optional
 last_name: string, optional
 campus_id: string, optional
 royalties: list[string], optional

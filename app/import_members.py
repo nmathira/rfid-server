@@ -27,8 +27,6 @@ def parse_csv(data: bytes):
             reason = None
             if len(row) != 4:
                 reason = "Expected four columns"
-            elif not tag:
-                reason = "No reference tag"
             elif not TAG.fullmatch(tag):
                 reason = "Reference tag must be four letters"
             elif not first or not last or len(first) > 255 or len(f"{first} {last}") > 255:
@@ -59,7 +57,7 @@ async def import_members(db, data: bytes) -> dict:
         candidates = set()
         if user.reference_tag and TAG.fullmatch(user.reference_tag):
             candidates.add(user.reference_tag.upper())
-        for value in (user.name, user.first_name):
+        for value in (user.name, user.full_name):
             if value and LEGACY_TAG.fullmatch(value):
                 candidates.add(value)
         for tag in candidates & groups.keys():
@@ -92,7 +90,7 @@ async def import_members(db, data: bytes) -> dict:
             continue
         entry = entries[0]
         desired = {"reference_tag": tag, "name": entry["first"],
-                   "first_name": entry["full_name"], "campus_id": entry["email"]}
+                   "full_name": entry["full_name"], "campus_id": entry["email"]}
         if any(getattr(user, key) != value for key, value in desired.items()):
             for key, value in desired.items():
                 setattr(user, key, value)

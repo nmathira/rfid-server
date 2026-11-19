@@ -12,7 +12,7 @@ class User(Base):
 
     uid: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    first_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    full_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     reference_tag: Mapped[Optional[str]] = mapped_column(String(4), nullable=True)
     campus_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     royalties: Mapped[Optional[list]] = mapped_column(JSONB, default=list)
