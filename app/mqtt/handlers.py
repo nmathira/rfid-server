@@ -21,6 +21,13 @@ def _random_name() -> str:
     return "-".join(random.choices(string.ascii_uppercase, k=4))
 
 
+def _display_name(user: User) -> str:
+    full_name = user.full_name
+    if full_name and full_name.strip() and full_name.strip().upper() != "NULL":
+        return full_name
+    return user.name or _random_name()
+
+
 def _get_today() -> date:
     """Today's date with a 3am rollover cutoff."""
     now = datetime.now(EASTERN)
@@ -167,7 +174,7 @@ async def handle_tap(client: aiomqtt.Client, payload: str, db: AsyncSession) -> 
                 RfidServerTapPayload(
                     pico_id=parsed.pico_id,
                     tag_id=user.uid,
-                    user_pref_name=user.full_name or user.name or _random_name(),
+                    user_pref_name=_display_name(user),
                     points=user.semester_taps,
                     streak_score=streak.streak_days,
                     leaderboard_placement=placement,
@@ -207,7 +214,7 @@ async def handle_tap(client: aiomqtt.Client, payload: str, db: AsyncSession) -> 
             RfidServerTapPayload(
                 pico_id=parsed.pico_id,
                 tag_id=user.uid,
-                user_pref_name=user.full_name or user.name or _random_name(),
+                user_pref_name=_display_name(user),
                 points=user.semester_taps,
                 streak_score=streak.streak_days if streak else 0,
                 leaderboard_placement=placement,

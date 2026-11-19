@@ -1,4 +1,11 @@
+from datetime import date, datetime, time, timedelta, timezone as utc_timezone
+from pathlib import Path
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from fastapi import FastAPI, HTTPException, Request
+from sqlalchemy import select
+
+from db.models import TapEvent
 from fastapi.responses import HTMLResponse
 
 from db.database import SessionLocal
@@ -12,6 +19,7 @@ MAX_CSV_BYTES = 32 * 1024 * 1024
 async def index():
     return """<!doctype html><html><head><title>Member CSV import</title></head>
     <body><h1>Member CSV import</h1>
+    <p><a href="/heatmap">View weekly tap heatmap</a></p>
     <p>Select a CSV with first name, last name, email, and reference tag columns.</p>
     <form id="form"><input id="file" type="file" accept=".csv,text/csv" required>
     <button>Import</button></form><p id="summary" role="status"></p>
@@ -57,3 +65,33 @@ async def upload(request: Request):
             return await import_members(db, bytes(data))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/heatmap", response_class=HTMLResponse)
+async def heatmap():
+    return Path(__file__).with_name("heatmap.html").read_text(encoding="utf-8")
+
+
+@app.get("/api/heatmap")
+async def heatmap_data(date: date, timezone: str):
+    try:
+        zone = ZoneInfo(timezone)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid time zone")
+    try:
+        start_day = date - timedelta(days=date.weekday())
+        end_day = start_day + timedelta(days=7)
+    except OverflowError:
+        raise HTTPException(status_code=400, detail="Date is outside the supported range")
+    start = datetime.combine(start_day, time.min, tzinfo=zone).astimezone(utc_timezone.utc)
+    end = datetime.combine(end_day, time.min, tzinfo=zone).astimezone(utc_timezone.utc)
+    async with SessionLocal() as db:
+        result = await db.scalars(select(TapEvent.tapped_at).where(
+            TapEvent.tapped_at >= start, TapEvent.tapped_at < end
+        ))
+        counts = [[0] * 96 for _ in range(7)]
+        for timestamp in result:
+            local = timestamp.astimezone(zone)
+            counts[(local.date() - start_day).days][local.hour * 4 + local.minute // 15] += 1
+    return {"days": [(start_day + timedelta(days=i)).isoformat() for i in range(7)],
+            "counts": counts, "total": sum(map(sum, counts))}
