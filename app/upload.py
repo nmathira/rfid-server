@@ -73,7 +73,9 @@ async def heatmap():
 
 
 @app.get("/api/heatmap")
-async def heatmap_data(date: date, timezone: str):
+async def heatmap_data(date: date, timezone: str, bucket_minutes: int = 30):
+    if bucket_minutes not in (15, 30, 60):
+        raise HTTPException(status_code=400, detail="Bucket size must be 15, 30, or 60 minutes")
     try:
         zone = ZoneInfo(timezone)
     except (ZoneInfoNotFoundError, ValueError):
@@ -89,9 +91,9 @@ async def heatmap_data(date: date, timezone: str):
         result = await db.scalars(select(TapEvent.tapped_at).where(
             TapEvent.tapped_at >= start, TapEvent.tapped_at < end
         ))
-        counts = [[0] * 96 for _ in range(7)]
+        counts = [[0] * (1440 // bucket_minutes) for _ in range(7)]
         for timestamp in result:
             local = timestamp.astimezone(zone)
-            counts[(local.date() - start_day).days][local.hour * 4 + local.minute // 30] += 1
+            counts[(local.date() - start_day).days][(local.hour * 60 + local.minute) // bucket_minutes] += 1
     return {"days": [(start_day + timedelta(days=i)).isoformat() for i in range(7)],
-            "counts": counts, "total": sum(map(sum, counts))}
+            "counts": counts, "bucket_minutes": bucket_minutes, "total": sum(map(sum, counts))}

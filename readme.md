@@ -118,8 +118,8 @@ uid: linked to User
 ## Weekly tap heatmap
 
 Open http://localhost:8000/heatmap (or follow the link from the import page) to
-see a Monday–Sunday week of taps in 15-minute intervals. Choose any date in a
-week or use the previous and next buttons. The display uses your browser's time
+see a Monday–Sunday week of taps. Choose 15, 30 (the default), or 60-minute
+intervals and select any date in a week or use the previous and next buttons. The display uses your browser's time
 zone; all recorded taps, including both directions and repeat taps, are counted.
 Hover over a cell to see its exact count. Colors are scaled to the busiest cell
 in the selected week, so colors are relative when comparing weeks. During the

@@ -6,7 +6,7 @@
   <title>Weekly tap heatmap</title>
   <style>
     body { font: 16px system-ui, sans-serif; margin: 2rem auto; padding: 0 1rem; max-width: 1000px; color: #182333; }
-    label, button, input { font: inherit; } button, input { padding: .4rem; }
+    label, button, input, select { font: inherit; } button, input, select { padding: .4rem; }
     .controls { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
     .scroll { overflow-x: auto; } table { border-collapse: separate; border-spacing: 3px; width: 100%; min-width: 560px; }
     th { font-size: .8rem; font-weight: 500; } td { height: 9px; min-width: 45px; background: #edf1f4; }
@@ -17,15 +17,15 @@
 <body>
   <a href="/">← Member CSV import</a>
   <h1>Weekly tap heatmap</h1>
-  <p>Each cell counts all taps in a 15-minute period, including entries and exits. Times use your browser's time zone: <strong id="zone"></strong>.</p>
-  <div class="controls"><button id="previous" type="button">← Previous week</button><label for="date">Week containing</label><input id="date" type="date"><button id="next" type="button">Next week →</button></div>
+  <p>Each cell counts all taps in the selected period, including entries and exits. Times use your browser's time zone: <strong id="zone"></strong>.</p>
+  <div class="controls"><button id="previous" type="button">← Previous week</button><label for="date">Week containing</label><input id="date" type="date"><button id="next" type="button">Next week →</button><label for="bucket">Bucket size</label><select id="bucket"><option value="15">15 minutes</option><option value="30" selected>30 minutes</option><option value="60">60 minutes</option></select></div>
   <p id="status" role="status">Loading…</p>
   <div class="legend" aria-label="Color scale"><span>Fewer taps</span><span class="swatch" style="background:#edf1f4"></span><span class="swatch" style="background:#b7dfc5"></span><span class="swatch" style="background:#63b77d"></span><span class="swatch" style="background:#258a52"></span><span class="swatch" style="background:#07562f"></span><span>More taps</span></div>
   <div class="scroll"><table id="heatmap"><caption id="caption"></caption><thead id="head"></thead><tbody id="body"></tbody></table></div>
   <script>
     const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     document.getElementById('zone').textContent = zone;
-    const input = document.getElementById('date'), status = document.getElementById('status');
+    const input = document.getElementById('date'), bucket = document.getElementById('bucket'), status = document.getElementById('status');
     const localDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     input.value = localDate(new Date());
     let requestNumber = 0;
@@ -34,7 +34,7 @@
       const request = ++requestNumber;
       status.textContent = 'Loading…';
       try {
-        const response = await fetch(`/api/heatmap?date=${encodeURIComponent(input.value)}&timezone=${encodeURIComponent(zone)}`);
+        const response = await fetch(`/api/heatmap?date=${encodeURIComponent(input.value)}&timezone=${encodeURIComponent(zone)}&bucket_minutes=${encodeURIComponent(bucket.value)}`);
         const data = await response.json();
         if (request !== requestNumber) return;
         if (!response.ok) throw new Error(data.detail || 'Could not load taps');
@@ -46,8 +46,8 @@
         const blank = document.createElement('th'); blank.textContent = 'Time'; header.appendChild(blank);
         for (const day of data.days) { const th = document.createElement('th'); th.scope = 'col'; th.textContent = day; header.appendChild(th); }
         head.appendChild(header);
-        for (let slot = 0; slot < 96; slot++) {
-          const row = document.createElement('tr'), time = `${String(Math.floor(slot / 4)).padStart(2,'0')}:${String((slot % 4)*15).padStart(2,'0')}`;
+        for (let slot = 0; slot < data.counts[0].length; slot++) {
+          const row = document.createElement('tr'), time = `${String(Math.floor(slot * data.bucket_minutes / 60)).padStart(2,'0')}:${String((slot * data.bucket_minutes) % 60).padStart(2,'0')}`;
           const label = document.createElement('th'); label.scope = 'row'; label.textContent = time; row.appendChild(label);
           for (let day = 0; day < 7; day++) {
             const count = data.counts[day][slot], cell = document.createElement('td');
@@ -62,6 +62,7 @@
       } catch (error) { if (request === requestNumber) status.textContent = `Unable to load heatmap: ${error.message}`; }
     }
     input.addEventListener('change', load);
+    bucket.addEventListener('change', load);
     function move(days) { if (!input.value) return; const d = new Date(input.value + 'T12:00:00'); d.setDate(d.getDate() + days); input.value = localDate(d); load(); }
     document.getElementById('previous').onclick = () => move(-7);
     document.getElementById('next').onclick = () => move(7);
