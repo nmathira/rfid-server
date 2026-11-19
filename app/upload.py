@@ -1,3 +1,5 @@
+import csv
+import io
 from datetime import date, datetime, time, timedelta, timezone as utc_timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -5,8 +7,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from fastapi import FastAPI, HTTPException, Request
 from sqlalchemy import select
 
-from db.models import TapEvent
-from fastapi.responses import HTMLResponse
+from db.models import TapEvent, User
+from fastapi.responses import HTMLResponse, Response
 
 from db.database import SessionLocal
 from import_members import import_members
@@ -76,17 +78,7 @@ async def heatmap():
 async def heatmap_data(date: date, timezone: str, bucket_minutes: int = 30):
     if bucket_minutes not in (15, 30, 60):
         raise HTTPException(status_code=400, detail="Bucket size must be 15, 30, or 60 minutes")
-    try:
-        zone = ZoneInfo(timezone)
-    except (ZoneInfoNotFoundError, ValueError):
-        raise HTTPException(status_code=400, detail="Invalid time zone")
-    try:
-        start_day = date - timedelta(days=date.weekday())
-        end_day = start_day + timedelta(days=7)
-    except OverflowError:
-        raise HTTPException(status_code=400, detail="Date is outside the supported range")
-    start = datetime.combine(start_day, time.min, tzinfo=zone).astimezone(utc_timezone.utc)
-    end = datetime.combine(end_day, time.min, tzinfo=zone).astimezone(utc_timezone.utc)
+    zone, start_day, start, end = week_bounds(date, timezone)
     async with SessionLocal() as db:
         result = await db.scalars(select(TapEvent.tapped_at).where(
             TapEvent.tapped_at >= start, TapEvent.tapped_at < end
@@ -97,3 +89,39 @@ async def heatmap_data(date: date, timezone: str, bucket_minutes: int = 30):
             counts[(local.date() - start_day).days][(local.hour * 60 + local.minute) // bucket_minutes] += 1
     return {"days": [(start_day + timedelta(days=i)).isoformat() for i in range(7)],
             "counts": counts, "bucket_minutes": bucket_minutes, "total": sum(map(sum, counts))}
+
+
+def week_bounds(selected_date: date, timezone: str):
+    try:
+        zone = ZoneInfo(timezone)
+    except (ZoneInfoNotFoundError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid time zone")
+    try:
+        start_day = selected_date - timedelta(days=selected_date.weekday())
+        end_day = start_day + timedelta(days=7)
+    except OverflowError:
+        raise HTTPException(status_code=400, detail="Date is outside the supported range")
+    start = datetime.combine(start_day, time.min, tzinfo=zone).astimezone(utc_timezone.utc)
+    end = datetime.combine(end_day, time.min, tzinfo=zone).astimezone(utc_timezone.utc)
+    return zone, start_day, start, end
+
+
+@app.get("/api/taps.csv")
+async def weekly_taps_csv(date: date, timezone: str):
+    zone, start_day, start, end = week_bounds(date, timezone)
+    query = (select(TapEvent.tapped_at, TapEvent.user_uid, User.name, User.full_name,
+                    TapEvent.mqtt_reader_uid, TapEvent.direction)
+             .join(User, TapEvent.user_uid == User.uid)
+             .where(TapEvent.tapped_at >= start, TapEvent.tapped_at < end)
+             .order_by(TapEvent.tapped_at, TapEvent.id))
+    output = io.StringIO(newline="")
+    writer = csv.writer(output)
+    writer.writerow(["tapped_at", "user_uid", "name", "full_name", "reader_uid", "direction"])
+    async with SessionLocal() as db:
+        result = await db.execute(query)
+        for timestamp, uid, name, full_name, reader, direction in result:
+            writer.writerow([timestamp.astimezone(zone).isoformat(), uid, name or "",
+                             full_name or "", reader or "", "in" if direction else "out"])
+    return Response(output.getvalue(), media_type="text/csv", headers={
+        "Content-Disposition": f'attachment; filename="taps-{start_day.isoformat()}.csv"'
+    })

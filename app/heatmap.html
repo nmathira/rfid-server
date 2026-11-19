@@ -17,8 +17,9 @@
 <body>
   <a href="/">← Member CSV import</a>
   <h1>Weekly tap heatmap</h1>
-  <p>Each cell counts all taps in the selected period, including entries and exits. Times use your browser's time zone: <strong id="zone"></strong>.</p>
+  <p>Each cell counts all taps in the selected period, from recorded tap events. Times use your browser's time zone: <strong id="zone"></strong>.</p>
   <div class="controls"><button id="previous" type="button">← Previous week</button><label for="date">Week containing</label><input id="date" type="date"><button id="next" type="button">Next week →</button><label for="bucket">Bucket size</label><select id="bucket"><option value="15">15 minutes</option><option value="30" selected>30 minutes</option><option value="60">60 minutes</option></select></div>
+  <p><button id="download" type="button">Download this week as CSV</button></p>
   <p id="status" role="status">Loading…</p>
   <div class="legend" aria-label="Color scale"><span>Fewer taps</span><span class="swatch" style="background:#edf1f4"></span><span class="swatch" style="background:#b7dfc5"></span><span class="swatch" style="background:#63b77d"></span><span class="swatch" style="background:#258a52"></span><span class="swatch" style="background:#07562f"></span><span>More taps</span></div>
   <div class="scroll"><table id="heatmap"><caption id="caption"></caption><thead id="head"></thead><tbody id="body"></tbody></table></div>
@@ -64,6 +65,9 @@
     input.addEventListener('change', load);
     bucket.addEventListener('change', load);
     function move(days) { if (!input.value) return; const d = new Date(input.value + 'T12:00:00'); d.setDate(d.getDate() + days); input.value = localDate(d); load(); }
+    document.getElementById('download').onclick = () => {
+      if (input.value) window.location.href = `/api/taps.csv?date=${encodeURIComponent(input.value)}&timezone=${encodeURIComponent(zone)}`;
+    };
     document.getElementById('previous').onclick = () => move(-7);
     document.getElementById('next').onclick = () => move(7);
     load();

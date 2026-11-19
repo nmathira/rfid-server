@@ -40,3 +40,24 @@ class HeatmapTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPException) as exc:
             await heatmap_data(date(2026, 11, 1), "UTC", 20)
         self.assertEqual(exc.exception.status_code, 400)
+
+    async def test_csv_export_uses_week_and_local_timestamps(self):
+        import csv
+        import io
+        from upload import weekly_taps_csv
+
+        class ExportSession(FakeSession):
+            async def execute(self, query):
+                params = list(query.compile().params.values())
+                assert params == [datetime(2026, 10, 26, 4, tzinfo=timezone.utc),
+                                  datetime(2026, 11, 2, 5, tzinfo=timezone.utc)]
+                return [(datetime(2026, 11, 1, 6, 15, tzinfo=timezone.utc),
+                         "tag", "Alex", "Alex, Example", "reader", True)]
+
+        with patch("upload.SessionLocal", ExportSession):
+            response = await weekly_taps_csv(date(2026, 11, 1), "America/New_York")
+        rows = list(csv.DictReader(io.StringIO(response.body.decode())))
+        self.assertEqual(rows[0]["tapped_at"], "2026-11-01T01:15:00-05:00")
+        self.assertEqual(rows[0]["full_name"], "Alex, Example")
+        self.assertEqual(rows[0]["direction"], "in")
+        self.assertIn("taps-2026-10-26.csv", response.headers["content-disposition"])
