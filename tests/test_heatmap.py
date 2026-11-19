@@ -52,12 +52,13 @@ class HeatmapTests(unittest.IsolatedAsyncioTestCase):
                 assert params == [datetime(2026, 10, 26, 4, tzinfo=timezone.utc),
                                   datetime(2026, 11, 2, 5, tzinfo=timezone.utc)]
                 return [(datetime(2026, 11, 1, 6, 15, tzinfo=timezone.utc),
-                         "tag", "Alex", "Alex, Example", "reader", True)]
+                         "tag", "Alex", "Alex, Example", "alex@example.edu", "reader", True)]
 
         with patch("upload.SessionLocal", ExportSession):
             response = await weekly_taps_csv(date(2026, 11, 1), "America/New_York")
         rows = list(csv.DictReader(io.StringIO(response.body.decode())))
         self.assertEqual(rows[0]["tapped_at"], "2026-11-01T01:15:00-05:00")
         self.assertEqual(rows[0]["full_name"], "Alex, Example")
+        self.assertEqual(rows[0]["campus_id"], "alex@example.edu")
         self.assertEqual(rows[0]["direction"], "in")
         self.assertIn("taps-2026-10-26.csv", response.headers["content-disposition"])

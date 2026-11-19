@@ -123,8 +123,9 @@ intervals and select any date in a week or use the previous and next buttons. Th
 zone; all recorded tap events, including repeat taps, are counted. The current worker
 records tap-ins; tap-outs update presence but do not create tap events.
 Use **Download this week as CSV** to export the selected week, with local
-timestamps (including UTC offset), user IDs, names, reader IDs, and directions.
-Names reflect the current user record. Hover over a cell to see its exact count. Colors are scaled to the busiest cell
+timestamps (including UTC offset), user IDs, names, emails (`campus_id`), reader
+IDs, and directions.
+Names and emails reflect the current user record. Hover over a cell to see its exact count. Colors are scaled to the busiest cell
 in the selected week, so colors are relative when comparing weeks. During the
 fall daylight-saving transition, repeated local times share a cell; skipped
 spring times have no taps. The heatmap shares the import service's localhost-only

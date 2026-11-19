@@ -109,19 +109,19 @@ def week_bounds(selected_date: date, timezone: str):
 @app.get("/api/taps.csv")
 async def weekly_taps_csv(date: date, timezone: str):
     zone, start_day, start, end = week_bounds(date, timezone)
-    query = (select(TapEvent.tapped_at, TapEvent.user_uid, User.name, User.full_name,
+    query = (select(TapEvent.tapped_at, TapEvent.user_uid, User.name, User.full_name, User.campus_id,
                     TapEvent.mqtt_reader_uid, TapEvent.direction)
              .join(User, TapEvent.user_uid == User.uid)
              .where(TapEvent.tapped_at >= start, TapEvent.tapped_at < end)
              .order_by(TapEvent.tapped_at, TapEvent.id))
     output = io.StringIO(newline="")
     writer = csv.writer(output)
-    writer.writerow(["tapped_at", "user_uid", "name", "full_name", "reader_uid", "direction"])
+    writer.writerow(["tapped_at", "user_uid", "name", "full_name", "campus_id", "reader_uid", "direction"])
     async with SessionLocal() as db:
         result = await db.execute(query)
-        for timestamp, uid, name, full_name, reader, direction in result:
+        for timestamp, uid, name, full_name, campus_id, reader, direction in result:
             writer.writerow([timestamp.astimezone(zone).isoformat(), uid, name or "",
-                             full_name or "", reader or "", "in" if direction else "out"])
+                             full_name or "", campus_id or "", reader or "", "in" if direction else "out"])
     return Response(output.getvalue(), media_type="text/csv", headers={
         "Content-Disposition": f'attachment; filename="taps-{start_day.isoformat()}.csv"'
     })
