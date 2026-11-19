@@ -92,6 +92,6 @@ async def heatmap_data(date: date, timezone: str):
         counts = [[0] * 96 for _ in range(7)]
         for timestamp in result:
             local = timestamp.astimezone(zone)
-            counts[(local.date() - start_day).days][local.hour * 4 + local.minute // 15] += 1
+            counts[(local.date() - start_day).days][local.hour * 4 + local.minute // 30] += 1
     return {"days": [(start_day + timedelta(days=i)).isoformat() for i in range(7)],
             "counts": counts, "total": sum(map(sum, counts))}
